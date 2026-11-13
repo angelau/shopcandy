@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Status | Shop Candy</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-nav">
+      <a href="index.html" class="logo">Shop Candy </a>
+      <a href="index.html" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);"><i class="fa-solid fa-home"></i> Back to Store</a>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 2rem 1rem; max-width: 700px;">
+    <div id="order-status-container">
+      <div style="text-align: center; padding: 3rem;">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.5rem; color: var(--accent-color);"></i>
+        <p style="margin-top: 1rem; color: var(--text-muted);">Loading your order status...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderId = urlParams.get("id");
+      const container = document.getElementById("order-status-container");
+
+      if (!orderId) {
+        showError(container, "Order Reference Missing", "No order ID was provided in the tracking link.");
+        return;
+      }
+
+     
+      const orders = await ShopCandyData.getOrders();
+      const order = orders.find(o => o.id === orderId);
+
+      if (!order) {
+        showError(container, "Order Not Found", `We couldn't find order #${orderId} in our database.`);
+        return;
+      }
+
+      const itemsTotal = order.items_total || order.itemsTotal || 0;
+      const deliveryFee = order.delivery_fee || order.deliveryFee || 0;
+      const grandTotal = itemsTotal + Number(deliveryFee);
+
+      container.innerHTML = `
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.75rem;">
+          <!-- Header Success Badge -->
+          <div style="text-align: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
+            <div style="width: 60px; height: 60px; background: #dcfce7; color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 0.75rem;">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <h1 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem;">Order Confirmed!</h1>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Reference: <strong>#${order.id}</strong></p>
+            <div style="margin-top: 0.75rem; display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">
+              Status: ${order.status || 'Paid'}
+            </div>
+          </div>
+
+          <!-- Customer & Shipping Details -->
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-truck-fast"></i> Shipping & Delivery Details</h3>
+            <div style="font-size: 0.9rem; background: var(--bg-primary); padding: 1rem; border-radius: 6px; line-height: 1.5;">
+              <p><strong>Recipient:</strong> ${order.customer.fullName}</p>
+              <p><strong>Phone / WhatsApp:</strong> ${order.customer.whatsapp || order.customer.phone}</p>
+              <p><strong>Delivery Address:</strong> ${order.customer.address}, ${order.customer.state}</p>
+            </div>
+          </div>
+
+          <!-- Ordered Items List -->
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-bag-shopping"></i> Preorder Items</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              ${order.items.map(item => `
+                <div style="display: flex; align-items: center; gap: 1rem; background: var(--bg-primary); padding: 0.75rem; border-radius: 6px;">
+                  <img src="${item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&auto=format&fit=crop&q=80'}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" alt="">
+                  <div style="flex-grow: 1;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700;">${item.name}</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Size: ${item.size} | Color: ${item.color} | Qty: ${item.quantity}</p>
+                  </div>
+                  <div style="font-weight: 800; font-size: 0.9rem; color: var(--accent-color);">${ShopCandyData.formatNaira(item.price * item.quantity)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Financial Breakdown -->
+          <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-bottom: 1.5rem; font-size: 0.95rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span>Items Subtotal:</span>
+              <strong>${ShopCandyData.formatNaira(itemsTotal)}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span>Delivery Fee:</span>
+              <strong>${deliveryFee > 0 ? ShopCandyData.formatNaira(deliveryFee) : '<span style="color: #d97706;">Pending Confirmation</span>'}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 800; margin-top: 0.75rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
+              <span>Grand Total:</span>
+              <span style="color: var(--accent-color);">${ShopCandyData.formatNaira(grandTotal)}</span>
+            </div>
+          </div>
+
+          <!-- Preorder Notice Box -->
+          <div class="notice-box" style="margin-bottom: 1.5rem;">
+            <i class="fa-solid fa-clock"></i> <strong>Preorder Notice:</strong> Estimated arrival is about 2 weeks after your order is confirmed and paid. We will update your delivery fee and status soon!
+          </div>
+
+          <!-- WhatsApp Support Button -->
+          <div style="text-align: center;">
+            <a href="https://wa.me/2348012345678?text=Hello%20Shop%20Candy,%20I%20am%20inquiring%20about%20my%20order%20status%20for%20reference%20%23${order.id}" target="_blank" class="btn btn-outline" style="background: #25d366; color: white; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; min-height: 42px;">
+              <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i> Inquire on WhatsApp
+            </a>
+          </div>
+        </div>
+      `;
+    });
+
+    function showError(container, title, message) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <i class="fa-solid fa-circle-exclamation" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
+          <h2>${title}</h2>
+          <p style="color: var(--text-muted); margin: 1rem 0;">${message}</p>
+          <a href="index.html" class="btn btn-primary" style="display:inline-block; width:auto;">Return to Home</a>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

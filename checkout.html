@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | Shop Candy</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="https://checkout.flutterwave.com/v3.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-nav">
+      <a href="index.html" class="logo">Shop Candy </a>
+      <a href="cart.html" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);"><i class="fa-solid fa-arrow-left"></i> Return to Cart</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h1 class="section-title" style="text-align: left; font-size: 1.6rem;"><i class="fa-solid fa-lock"></i> Secure Checkout</h1>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;" class="checkout-grid">
+        <form id="checkout-form" onsubmit="handleCheckout(event)">
+          <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Customer & Delivery Information</h2>
+
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">Full Name *</label><input type="text" id="fullname" class="input-field" required placeholder="Chioma Adebayo"></div>
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">Phone Number *</label><input type="tel" id="phone" class="input-field" required placeholder="08012345678"></div>
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">WhatsApp Number *</label><input type="tel" id="whatsapp" class="input-field" required placeholder="08012345678"></div>
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">Email Address *</label><input type="email" id="email" class="input-field" required placeholder="chioma@example.com"></div>
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">State *</label>
+              <select id="state" class="input-field" required>
+                <option value="">Select State</option>
+                <option value="Lagos">Lagos</option>
+                <option value="Rivers">Rivers</option>
+                <option value="FCT - Abuja">FCT - Abuja</option>
+                <option value="Oyo">Oyo</option>
+                <option value="Delta">Delta</option>
+                <option value="Port Harcourt">Port Harcourt</option>
+                <option value="Kaduna">Kaduna</option>
+                <option value="Kano">Kano</option>
+                <option value="Enugu">Enugu</option>
+                <option value="Ogun">Ogun</option>
+                <option value="Edo">Edo</option>
+                <option value="Anambra">Anambra</option>
+                <option value="Abia">Abia</option>
+                <option value="Akwa Ibom">Akwa Ibom</option>
+                <option value="Bauchi">Bauchi</option>
+                <option value="Benue">Benue</option>
+                <option value="Borno">Borno</option>
+                <option value="Cross River">Cross River</option>
+                <option value="Ekiti">Ekiti</option>
+                <option value="Gombe">Gombe</option>
+                <option value="Imo">Imo</option>
+                <option value="Jigawa">Jigawa</option>
+                <option value="Katsina">Katsina</option>
+                <option value="Kebbi">Kebbi</option>
+                <option value="Kogi">Kogi</option>
+                <option value="Kwara">Kwara</option>
+                <option value="Nasarawa">Nasarawa</option>
+                <option value="Niger">Niger</option>
+                <option value="Sokoto">Sokoto</option>
+                <option value="Taraba">Taraba</option>
+                <option value="Yobe">Yobe</option>
+                <option value="Zamfara">Zamfara</option>
+
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;"><label style="font-size:0.85rem; font-weight:700;">Full Delivery Address *</label><textarea id="address" class="input-field" rows="3" required placeholder="Street address..."></textarea></div>
+
+            <div class="notice-box" style="margin-bottom: 1rem;">
+              <i class="fa-solid fa-truck"></i> Delivery fee is not included. We will message you the delivery fee after confirmation.
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Pay <span id="pay-btn-amount">₦0</span> Now</button>
+          </div>
+        </form>
+
+        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Order Summary</h2>
+          <div id="checkout-items-list" style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;"></div>
+          <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 800;">
+            <span>Items Total:</span>
+            <span id="checkout-subtotal" style="color: var(--accent-color);">₦0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/data.js"></script>
+
+  <script>
+   
+    const FLUTTERWAVE_PUBLIC_KEY = 'FLWPUBK-84d48c1a41d5e9ba6f188adb80b5ad89-X';
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const cart = ShopCandyData.getCart();
+      if (cart.length === 0) { window.location.href = "cart.html"; return; }
+
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      document.getElementById("pay-btn-amount").textContent = ShopCandyData.formatNaira(subtotal);
+      document.getElementById("checkout-subtotal").textContent = ShopCandyData.formatNaira(subtotal);
+
+      document.getElementById("checkout-items-list").innerHTML = cart.map(item => `
+        <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 0.5rem;">
+          <span>${item.name} x ${item.quantity}</span>
+          <strong>${ShopCandyData.formatNaira(item.price * item.quantity)}</strong>
+        </div>
+      `).join('');
+    });
+
+    function handleCheckout(event) {
+      event.preventDefault();
+      const cart = ShopCandyData.getCart();
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      const customerDetails = {
+        fullName: document.getElementById("fullname").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        whatsapp: document.getElementById("whatsapp").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        state: document.getElementById("state").value,
+        address: document.getElementById("address").value.trim()
+      };
+
+      const orderRef = 'SC-' + Math.floor(100000 + Math.random() * 900000);
+
+     
+      FlutterwaveCheckout({
+        public_key: FLUTTERWAVE_PUBLIC_KEY,
+        tx_ref: orderRef,
+        amount: subtotal,
+        currency: "NGN",
+        payment_options: "card, banktransfer, ussd, mobilemoney, account", // Enables all local channels
+        customer: {
+          email: customerDetails.email,
+          phone_number: customerDetails.phone,
+          name: customerDetails.fullName,
+        },
+        customizations: {
+          title: "Shop Candy 🛒",
+          description: "Preorder Payment for Store Items",
+          logo: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80",
+        },
+        callback: async function (data) {
+          await saveOrderToSupabase(data.tx_ref, cart, subtotal, customerDetails);
+        },
+        onclose: function() {
+          console.log("Payment modal closed by user.");
+        }
+      });
+    }
+    
+    async function saveOrderToSupabase(orderId, cart, subtotal, customerDetails) {
+      const newOrder = {
+        id: orderId,
+        customer: customerDetails,
+        items: cart,
+        items_total: subtotal,
+        delivery_fee: 0,
+        status: "Paid"
+      };
+
+      const success = await ShopCandyData.saveOrder(newOrder);
+      if (success) {
+        localStorage.removeItem("shopcandy_cart");
+        window.location.href = `order-status.html?id=${orderId}`;
+      }
+    }
+  </script>
+
+</body>
+</html>

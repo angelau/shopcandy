@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Shop Candy</title>
+  <meta name="description" content="Manage products, update customer preorder statuses, and assign delivery fees.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .admin-card {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= HEADER ================= -->
+  <header class="header">
+    <div class="container header-nav">
+      <a href="index.html" class="logo">Shop Candy Admin </a>
+      <a href="index.html" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);"><i class="fa-solid fa-arrow-left"></i> Exit to Store</a>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="container">
+    
+   <!-- LOGIN SCREEN -->
+<section id="login-section" class="section" style="max-width: 400px; margin: 3rem auto;">
+  <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+    <h1 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 1rem; text-align: center;"><i class="fa-solid fa-lock"></i> Owner Login</h1>
+    
+    <form onsubmit="handleAdminLogin(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-email" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Admin Email</label>
+        <input type="email" id="admin-email" class="input-field" required placeholder="admin@shopcandy.com.ng">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-pass" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Password</label>
+        <input type="password" id="admin-pass" class="input-field" required placeholder="Enter your password">
+      </div>
+      
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Login to Dashboard</button>
+    </form>
+  </div>
+</section>
+
+    <section id="dashboard-section" class="section" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1 style="font-size: 1.5rem; font-weight: 800;">Store Management</h1>
+        <button class="btn btn-outline" onclick="handleLogout()" style="min-height: 38px; width: auto; font-size: 0.85rem;">Logout</button>
+      </div>
+
+      <!-- Tabs Nav -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <button class="btn btn-primary" id="tab-orders-btn" onclick="switchTab('orders')" style="min-height: 40px; font-size: 0.9rem;">Customer Orders</button>
+        <button class="btn btn-outline" id="tab-products-btn" onclick="switchTab('products')" style="min-height: 40px; font-size: 0.9rem;">Manage Products</button>
+      </div>
+
+      <!-- ORDERS TAB CONTENT -->
+      <div id="orders-tab-content">
+        <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Incoming Preorders</h2>
+        
+        <div style="margin-bottom: 1rem;">
+          <input type="text" id="order-search" class="input-field" placeholder="Search orders by Phone or Order ID..." oninput="renderAdminOrders()">
+        </div>
+
+        <div id="admin-orders-list">
+         
+        </div>
+      </div>
+
+      <!-- PRODUCTS TAB CONTENT -->
+      <div id="products-tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="font-size: 1.1rem; font-weight: 700;">Catalog Inventory</h2>
+          <button class="btn btn-primary" onclick="openProductModal()" style="min-height: 38px; width: auto; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> Add New Product</button>
+        </div>
+
+        <div id="admin-products-list">
+         
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Product Add / Edit Modal -->
+<div id="product-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-md); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+    <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1rem;" id="modal-title">Add New Product</h2>
+    
+    <form id="product-form" onsubmit="saveProductForm(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Product Name *</label>
+        <input type="text" id="modal-name" class="input-field" required placeholder="e.g. Quilted Chain Bag">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Price in Naira (₦) *</label>
+        <input type="number" id="modal-price" class="input-field" required placeholder="28500">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Category *</label>
+        <select id="modal-category" class="input-field">
+          <option value="Bags">Bags</option>
+          <option value="Shoes">Shoes</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Accessories">Accessories</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Description *</label>
+        <textarea id="modal-desc" class="input-field" rows="3" required placeholder="Product details..."></textarea>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Select Images from System/Phone *</label>
+        <input type="file" id="modal-files" class="input-field" accept="image/*" multiple required style="padding: 0.5rem;">
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">You can select multiple images at once.</p>
+      </div>
+
+      <div style="display: flex; gap: 1rem;">
+        <button type="button" class="btn btn-outline" onclick="closeProductModal()" style="flex: 1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 1;" id="modal-submit-btn">Save & Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+    <div class="container">
+      <p style="font-weight: 700; color: var(--text-main);">Shop Candy Nigeria ₦</p>
+      <p style="font-size: 0.85rem; margin-top: 0.25rem;">All prices shown in Nigerian Naira (₦). No currency conversion hassle.</p>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">&copy; 2026 Shop Candy. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script>
+    const OWNER_WHATSAPP_NUMBER = "2349068923921"; 
+    const orderStatuses = [
+      "Paid",
+      "Ordered from supplier",
+      "Shipped",
+      "Arrived in Nigeria",
+      "Delivery fee pending",
+      "Out for delivery",
+      "Delivered"
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      
+      if (sessionStorage.getItem("shopcandy_logged_in") === "true") {
+        showDashboard();
+      }
+    });
+
+  
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        showDashboard();
+      }
+    });
+
+
+    async function handleAdminLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById("admin-email").value.trim();
+      const password = document.getElementById("admin-pass").value;
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        alert("Login failed: " + error.message);
+      } else {
+        showDashboard();
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      document.getElementById("login-section").style.display = "block";
+      document.getElementById("dashboard-section").style.display = "none";
+    }
+
+    function showDashboard() {
+      document.getElementById("login-section").style.display = "none";
+      document.getElementById("dashboard-section").style.display = "block";
+      renderAdminOrders();
+      renderAdminProducts();
+    }
+
+
+
+    function switchTab(tab) {
+      const ordersBtn = document.getElementById("tab-orders-btn");
+      const productsBtn = document.getElementById("tab-products-btn");
+      const ordersContent = document.getElementById("orders-tab-content");
+      const productsContent = document.getElementById("products-tab-content");
+
+      if (tab === "orders") {
+        ordersBtn.className = "btn btn-primary";
+        productsBtn.className = "btn btn-outline";
+        ordersContent.style.display = "block";
+        productsContent.style.display = "none";
+      } else {
+        ordersBtn.className = "btn btn-outline";
+        productsBtn.className = "btn btn-primary";
+        ordersContent.style.display = "none";
+        productsContent.style.display = "block";
+      }
+    }
+
+    // --- ORDERS MANAGEMENT ---
+    async function renderAdminOrders() {
+  const container = document.getElementById("admin-orders-list");
+  if (!container) return;
+
+  const searchInput = document.getElementById("order-search");
+  const search = searchInput ? searchInput.value.toLowerCase().trim() : "";
+  
+ 
+  let orders = await ShopCandyData.getOrders();
+
+  if (search) {
+    orders = orders.filter(o => 
+      o.id.toLowerCase().includes(search) || 
+      (o.customer.phone && o.customer.phone.toLowerCase().includes(search)) || 
+      (o.customer.fullName && o.customer.fullName.toLowerCase().includes(search))
+    );
+  }
+
+  if (orders.length === 0) {
+    container.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No customer orders found.</p>`;
+    return;
+  }
+
+  container.innerHTML = orders.map((order) => `
+    <div class="admin-card" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+        <div>
+          <strong style="color: var(--accent-color); font-size: 1.05rem;">Order #${order.id}</strong>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">${new Date(order.created_at || order.date).toLocaleString()}</div>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-weight: 800; font-size: 0.95rem;">Total: ${ShopCandyData.formatNaira(order.items_total || order.itemsTotal)}</span>
+        </div>
+      </div>
+
+      <div style="font-size: 0.88rem; margin-bottom: 0.75rem; background: var(--bg-primary); padding: 0.75rem; border-radius: 6px;">
+        <p><strong>Customer:</strong> ${order.customer.fullName} (${order.customer.phone || order.customer.whatsapp})</p>
+        <p><strong>WhatsApp:</strong> ${order.customer.whatsapp || order.customer.phone}</p>
+        <p><strong>Delivery Address:</strong> ${order.customer.address}, ${order.customer.state}</p>
+        <p style="margin-top: 0.35rem;"><strong>Items:</strong> ${order.items.map(i => `${i.name} (${i.size}, x${i.quantity})`).join(', ')}</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div>
+          <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Order Status:</label>
+          <select class="input-field" style="min-height: 38px; font-size: 0.85rem;" onchange="updateOrderStatus('${order.id}', this.value)">
+            ${orderStatuses.map(st => `<option value="${st}" ${order.status === st ? 'selected' : ''}>${st}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Delivery Fee (₦):</label>
+          <input type="number" class="input-field" style="min-height: 38px; font-size: 0.85rem;" value="${order.delivery_fee || order.deliveryFee || 0}" onchange="updateDeliveryFee('${order.id}', this.value)">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="min-height: 40px; font-size: 0.88rem; background-color: #25d366; width: 100%; border: none;" onclick="triggerWhatsAppMessage('${order.id}')">
+        <i class="fa-brands fa-whatsapp" style="margin-right: 0.5rem; font-size: 1.1rem;"></i> Message Customer on WhatsApp
+      </button>
+    </div>
+  `).join('');
+}
+
+    function updateOrderStatus(orderId, newStatus) {
+      let orders = ShopCandyData.getOrders();
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        order.status = newStatus;
+        ShopCandyData.saveOrders(orders);
+      }
+    }
+
+    function updateDeliveryFee(orderId, fee) {
+      let orders = ShopCandyData.getOrders();
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        order.deliveryFee = parseFloat(fee) || 0;
+        ShopCandyData.saveOrders(orders);
+      }
+    }
+
+    async function triggerWhatsAppMessage(orderId) {
+ 
+  let orders = await ShopCandyData.getOrders();
+  let order = orders.find(o => o.id === orderId);
+
+  if (!order) {
+    alert("Order details not found.");
+    return;
+  }
+
+  const rawPhone = order.customer.whatsapp || order.customer.phone;
+  if (!rawPhone) {
+    alert("No phone number recorded for this customer.");
+    return;
+  }
+
+  
+  let cleanPhone = rawPhone.replace(/\D/g, '');
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = '234' + cleanPhone.slice(1);
+  } else if (!cleanPhone.startsWith('234')) {
+    cleanPhone = '234' + cleanPhone;
+  }
+
+  const totalAmount = order.items_total || order.itemsTotal;
+  const message = `Hello ${order.customer.fullName}, thank you for shopping with Shop Candy! 🍬 We are writing regarding your preorder *#${order.id}* (Total: ${ShopCandyData.formatNaira(totalAmount)}). Your delivery fee is...`;
+  
+  const encodedMessage = encodeURIComponent(message);
+  window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
+}
+
+    async function renderAdminProducts() {
+  const container = document.getElementById("admin-products-list");
+  container.innerHTML = `<p style="text-align: center; color: var(--text-muted);">Loading products...</p>`;
+  
+  const products = await ShopCandyData.getProducts();
+
+  if (products.length === 0) {
+    container.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No products found in database.</p>`;
+    return;
+  }
+
+  container.innerHTML = products.map((prod) => `
+    <div class="admin-card" style="display: flex; align-items: center; gap: 1rem;">
+      <img src="${prod.images && prod.images[0] ? prod.images[0] : ''}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" alt="">
+      <div style="flex-grow: 1;">
+        <h4 style="font-size: 0.95rem; font-weight: 700;">${prod.name} ${prod.hidden ? '<span style="color: red; font-size: 0.75rem;">(Hidden)</span>' : ''}</h4>
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--accent-color);">${ShopCandyData.formatNaira(prod.price)} | ${prod.category}</div>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn btn-outline" style="min-height: 34px; padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="toggleHideProduct('${prod.id}', ${prod.hidden})">${prod.hidden ? 'Show' : 'Hide'}</button>
+        <button class="btn btn-outline" style="min-height: 34px; padding: 0.2rem 0.6rem; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;" onclick="deleteProduct('${prod.id}')"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function toggleHideProduct(id, currentHiddenState) {
+  const success = await ShopCandyData.updateProductVisibility(id, !currentHiddenState);
+  if (success) renderAdminProducts();
+}
+
+async function deleteProduct(id) {
+  if (!confirm("Are you sure you want to delete this product?")) return;
+  const success = await ShopCandyData.deleteProduct(id);
+  if (success) renderAdminProducts();
+}
+
+
+const CLOUDINARY_CLOUD_NAME = "doq4g8g2x"; 
+const CLOUDINARY_UPLOAD_PRESET = "shopcandy"; 
+
+
+function openProductModal() {
+  document.getElementById("product-form").reset();
+  document.getElementById("product-modal").style.display = "flex";
+}
+
+function closeProductModal() {
+  document.getElementById("product-modal").style.display = "none";
+}
+
+
+async function saveProductForm(event) {
+  event.preventDefault();
+
+  const name = document.getElementById("modal-name").value.trim();
+  const price = parseFloat(document.getElementById("modal-price").value);
+  const category = document.getElementById("modal-category").value;
+  const description = document.getElementById("modal-desc").value.trim();
+  const fileInput = document.getElementById("modal-files");
+  const files = Array.from(fileInput.files);
+
+  if (files.length === 0) {
+    alert("Please select at least one image.");
+    return;
+  }
+
+  const submitBtn = document.getElementById("modal-submit-btn");
+  submitBtn.textContent = "Uploading to Cloudinary...";
+  submitBtn.disabled = true;
+
+  try {
+    const uploadedImageUrls = [];
+
+    // 1. Upload images to Cloudinary
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.secure_url) {
+        uploadedImageUrls.push(data.secure_url);
+      } else {
+        throw new Error(data.error?.message || "Cloudinary upload failed");
+      }
+    }
+
+    // 2. Build new product object for Supabase
+    const newProduct = {
+      id: "sc-" + Date.now(),
+      name: name,
+      price: price,
+      category: category,
+      description: description,
+      sizes: ["Standard"],
+      colors: ["Default"],
+      images: uploadedImageUrls,
+      badge: "Preorder",
+      hidden: false
+    };
+
+    // 3. Save product directly to Supabase via data.js helper
+    const success = await ShopCandyData.saveProduct(newProduct);
+    
+    if (success) {
+      closeProductModal();
+      alert(`Success! Product created and ${uploadedImageUrls.length} images uploaded.`);
+      renderAdminProducts(); 
+    }
+
+  } catch (err) {
+    alert("Upload error: " + err.message);
+  } finally {
+    submitBtn.textContent = "Save & Upload";
+    submitBtn.disabled = false;
+  }
+}
+
+
+
+function contactCustomerWhatsApp(phone, orderId, customerName, orderTotal) {
+  if (!phone) {
+    alert("No phone number available for this customer.");
+    return;
+  }
+
+ 
+  let cleanPhone = phone.replace(/\D/g, ''); 
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = '234' + cleanPhone.slice(1);
+  } else if (!cleanPhone.startsWith('234')) {
+    cleanPhone = '234' + cleanPhone;
+  }
+
+  
+  const message = `Hello ${customerName}, thank you for shopping with Shop Candy! 🍬 We are reaching out regarding your preorder order *#${orderId}* (Total: ${ShopCandyData.formatNaira(orderTotal)}). `;
+  
+  const encodedMessage = encodeURIComponent(message);
+  window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
+}
+  </script>
+</body>
+</html>
